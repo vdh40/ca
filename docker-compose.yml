@@ -1,0 +1,46 @@
+version: "3.8"
+name: app
+services:
+  app:
+    image: python:3.11.3-bullseye
+    user: root
+    working_dir: /app/src
+    command: sh -c "pip install poetry && python -m poetry install && python -m poetry run python main.py"
+    environment:
+      API_PREFIX: /api/v1
+      DB__URL: postgresql+asyncpg://admin:admin@pg:5432/postgres
+      DB__SCHEMA_NAME: public
+      EXCHANGES__COINGECKO_URL: https://api.coingecko.com/api/v3
+      EXCHANGES__BINANCE_URL: https://api.coingecko.com/api/v3
+    volumes:
+      - ./:/app
+      - app-python-lib:/usr/local/lib/python3.11
+      - app-poetry-venv:/root/.cache/pypoetry/virtualenvs/
+    depends_on:
+      - pg
+
+  ingress-gateway:
+    image: nginx:1.25.3-alpine
+    volumes:
+      - ./devops/nginx/configs/ingress.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+
+  pg:
+    image: postgres:13.8-bullseye
+    volumes:
+      - pgdata:/pgdata
+    ports:
+      - "5432:5432"
+    environment:
+      PGDATA: /pgdata
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DATABASE: postgres
+
+volumes:
+  app-poetry-venv:
+  app-python-lib:
+  pgdata:
